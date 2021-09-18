@@ -56,7 +56,7 @@ This vulnerability was reported to Hikvision the day after discovery, on 21 June
 
 **Impact:**  
 
-- Critical Remotely Exploitable:  Yes 
+- Remotely Exploitable:  Yes 
 - Authentication Required: None 
 - Zero click (no action needed from device owner):  Yes 
 - Render device inoperable:  Yes 
@@ -82,7 +82,7 @@ As it's not responsible to disclose a POC, I instead decided to make a video sho
 
 Rather than just use my own equipment as a target, which could seem contrived, I enlisted the aid of a friend from the [http://ipcamtalk.com](http://ipcamtalk.com) forum, @alistairstevenson, who kindly put up a real live camera with permission to exploit.  I wasn't told the access credentials but during the attack it was clear it's running 2021 firmware and camera was manufactured January 2021. 
 
-The video showed a real world example of my attacking this target, obtaining information that should be only available to the owner, obtaining a root shell accessible via SSH (even though SSH disabled in the web interface), and ultimately bypassing the camera admin web portal authentication.
+The video showed a real world example of me attacking this target, obtaining information that should be only available to the owner, obtaining a root shell accessible via SSH (even though SSH disabled in the web interface), and ultimately bypassing the camera admin web portal authentication.
 
 ## A few stills from the real target POC video
 
