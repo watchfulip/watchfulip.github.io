@@ -24,10 +24,10 @@ dash:
   # generate social links in footer
   # supported colors: green, red, orange, blue, cyan, pink, teal, yellow, indigo, purple
   social_links:
-    - url: https://twitter.com/watchfulip
+    - url: https://twitter.com/watchful_ip
       icon: twitter-square
       color: cyan
-    - url: Watchfulip@protonmail.com
+    - url: watchfulip@protonmail.com
       icon: email-square
       color: red
     - url: https://github.com/watchfulip
