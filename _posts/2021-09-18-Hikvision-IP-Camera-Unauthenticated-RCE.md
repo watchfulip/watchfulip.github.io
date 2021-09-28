@@ -129,6 +129,7 @@ Was further pleased to note this problem was fixed in the way I recommended.
 ## Is this a Chinese Government mandated backdoor?
 No, definitely NOT.  You wouldn't do it like this.  And not all firmware types are affected.  
 
+28 September 2021 update: expanded answer provided [here](../../../2021/09/28/RFC-response-(CVE-2021-36260).html)
 
 ## Additional
 
@@ -240,11 +241,11 @@ Vulnerability discovered:  Sunday 20 June 2021
 
 Manufacturer notified of issue:  Monday 21 June 2021 16:16 to HSRC@hikvision.com and support.uk@hikvision.com.  Unfortunately HSRC didn't receive this due to it being caught by a spam filter.
 
-Wednesday 23 June 01:00 Follow up email to HSRC@hikvision.com and 400@hikvision.com, additionally sent pdf copy of email via vulnerability submission form at https://www.hikvision.com/europe/support/cybersecurity/report-an-issue/
+Wednesday 23 June 2021 01:00 Follow up email to HSRC@hikvision.com and 400@hikvision.com, additionally sent pdf copy of email via vulnerability submission form at https://www.hikvision.com/europe/support/cybersecurity/report-an-issue/
 
-**Wednesday 23 June 04:27 received reply from HSRC@hikvision.com requesting report on my findings.**
+**Wednesday 23 June 2021 04:27 received reply from HSRC@hikvision.com requesting report on my findings.**
 
-Wednesday 23 June 05:40 v1.0.0 of vulnerability details (**WIP-2021-06-HIK-2)** emailled to HSRC@hikvision.com
+Wednesday 23 June 2021 05:40 v1.0.0 of vulnerability details (**WIP-2021-06-HIK-2)** emailled to HSRC@hikvision.com
 
 **Wednesday 23 June 2021 07:42 HSRC confirm they have reproduced the issue.**
 
