@@ -1,0 +1,44 @@
+npx tailwindcss init
+npx tailwindcss init
+npm install -D tailwindcss
+npx tailwindcss init
+npx tailwindcss -i ./input.css -o ./output.css --watch
+git init
+
+
+ notepad .gitignore
+git rm -r --cached node_modules
+git add .
+git push -u origin main
+echo "# blah99995.github.io" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/blah99995/blah99995.github.io.git
+git push -u origin main
+git config --global user.email "blah99995@yandex.com"
+git config --global user.name "blah"
+git push -u origin main
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/blah99995/blah99995.github.io.git
+git push -u origin main
+
+
+Reinitialized existing Git repository in C:/Users/user/Documents/web/.git/
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/blah99995/blah99995.github.io.git
+git push -u origin main
+
+
+Reinitialized existing Git repository in C:/Users/user/Documents/web/.git/
+git push -u origin main
+
+
+
+   
+   
+   
+   

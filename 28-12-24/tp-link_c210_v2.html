@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.2">
+    <title>TP-Link firmware decryption and TP-Link C210 V2 cloud camera</title>
+    <link href="./../output.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/command-line/prism-command-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-armasm.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-asm.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-nasm.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins//file-highlight//prism-l/file-highlight/.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <script  src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins//file-highlight//prism-file-highlight.min.js"></script>
+
+</head>
+
+<body class="bg-slate-700  min-h-screen mb-4 text-gray-300 leading-relaxed">
+    <div class="bg-slate-800  container mx-auto px-4 py-8 max-w-4xl">
+    
+        <header class="mb-12">
+<div class="relative w-full h-2/4">
+  <!-- Banner image -->
+  <div 
+    class="absolute inset-0 bg-cover bg-center bg-no-repeat"
+    style="background-image: url('header.jpg');"
+  ></div>
+  
+  <!-- Fade-out effect -->
+  <div class="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-slate-700 to-transparent"></div>
+        <!-- Overlay for opacity -->
+        <div class="absolute inset-0 bg-black opacity-50"></div>  
+  <!-- Header text -->
+  <div class="relative z-10 flex flex-col items-center justify-center h-full">
+  <h1 class="text-4xl font-bold text-pink-500  text-center mb-4  mt-8 text-outline animate-tracking-in-expand">TP-Link Firmware Decryption</h1>
+  <h2 class="text-3xl font-bold text-blue-400  text-center mb-9 text-outline animate-tracking-in-expand">C210 V2 cloud camera bootloaders</h2>
+</div>
+</div>
+
+        </header>
+
+        <main >
+            <section class="mb-4 text-slate-300 leading-relaxed">
+                <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Summary</h2>
+  
+
+<p>Over the last 3 years I’ve been testing IoT devices under contract – mostly cameras and NVRs for manufacturers, but also switches, access control systems etc.  The work has been really interesting, and I’m proud of all the reports I produced detailing new vulnerabilities, but if you are a security researcher you probably know I won’t be able to talk about any of that.</p>
+<p>I recently just finished another contract writing reports on a multitude of vendor supplied test devices, and fancied something more casual and fun.  Picked up a few cheap cameras that were not from the big camera companies I’m familiar with, to find a way to get a root shell and poke about a bit.</p>
+<p>One of these is a TP-Link C210 V2 cloud camera.  It was a nice change to not be writing a formal report about a device, and also be free to publish something new since the <a href="https://watchfulip.github.io/2021/09/18/Hikvision-IP-Camera-Unauthenticated-RCE.html">Hikvision CVE-2021-36260</a> vulnerability I discovered 3 years ago.</p>
+<p>The device is super cheap, and unlike vendor supplied test devices I’ve worked on (some of which were expensive) - I played fast and loose with it not caring if I bricked it.  Not an approach I can take with contract devices as it would be embarrassing to have bricked one and have ask them to ship another one :)</p>
+<p>I did in fact cause a problem that prevented the Tapo from booting – but the recovery method I came up with might be interesting to some, maybe useful in niche situations so I’ve included it.  I was determined to find a software only solution and found it fun to figure out a way.</p>
+<p>I detail a TP-Link Tapo <a href="#bootloaders">bootloader vulnerability</a> that isn’t known as far as I know</p>
+<p>I discuss <a href="#firmware">TP-Link general firmware decryption</a> which I also didn't find anything about online.</p>
+
+<p>Note</p>
+    <li>Below testing was not authorized by TP-Link.  RSA public keys redacted in case they object.</li>
+    <li>No testing was carried out on TP-Link cloud services or Internet servers.</li>
+    <li>Some of the actions below could damage your device, void the warranty or terms of use.  I take no responsibility if you brick your device, your car gets a flat tyre tomorrow or anything else.</li>
+    <li>I've tried to make this post accessible so may have over explained a bit in a few areas or concepts.</li>    
+<p> </p>
+<p><i>Also just want to quickly mention I don't recommend any camera reliant on cloud services.  Nothing against TP-Link specifically, but I don't want such devices on my network under the potential control of any company no matter what country they are based in.  I gave away an Amazon Echo someone gifted me for example, and even my phone doesn't get trusted.</i></p>
+
+<p>OK, let’s start with firmware decryption. </p>
+
+                <br><h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9" id="firmware">Firmware Decryption</h2>
+<p><i>Originally this post was just going to discuss Tapo firmware, but I got curious and ended up expanding it to cover all TP-Link firmware except switches.</i></p>  
+<p><i>This enables decryption, but will not allow creation of unauthorized firmware if it is signed.</i></p>  
+<p>Checking TP-Link website firmware downloads, it appears some platforms use encryption and some do not.  It appears there 3 types of firmware:</p>
+
+<li>Not signed nor encrypted</li>
+<li>Signed but not encrypted</li>
+<li>Signed and encrypted</li>
+<p> </p>
+<p>And of the latter, 2 different firmware formats which use their own RSA key.</p>
+<p>binwalk will be fine for the majority of the first 2, but the C210 V2 uses encrypted firmware and I always like to make my own firmware tools for devices I work on.</p>
+
+<p>My test device has not yet been connected to the cloud (and might never be), which would reveal the latest firmware download link via network sniffing, so I checked a github repo for a leaked list of firmware and tested the most recent one.</p>
+
+<p>From <a href="https://raw.githubusercontent.com/tapo-firmware/Directory/refs/heads/main/all_keys.txt">https://raw.githubusercontent.com/tapo-firmware/Directory/refs/heads/main/all_keys.txt</a></p>
+
+<p>I downloaded: <a href="http://download.tplinkcloud.com/firmware/Tapo_C210v2_en_1.3.8_Build_230913_Rel.57186n_up_boot-signed_1696641054138.bin">http://download.tplinkcloud.com/firmware/Tapo_C210v2_en_1.3.8_Build_230913_Rel.57186n_up_boot-signed_1696641054138.bin</a></p>
+
+<p>binwalk won’t find any signatures in the file heavily suggesting encryption or at least obfuscation.</p>
+
+                <div class="code-block">
+                    <pre><code class="language-bash"><p>work@un64u:/play/tapo$ hhd Tapo_C210v2_en_1.3.7_Build_231020_Rel.39990n_up_boot-signed_1697781618399.bin</p>
+<p>00000000  00 00 02 00 55 aa 4c 5e  83 1f 53 4b a1 f8 f7 c9  |....U.L^..SK....|</p>
+<p>00000010  18 df 8f bf 7d a1 aa 55  08 00 00 00 00 00 00 17  |....}..U........|</p>
+<p>00000020  c0 a8 66 99 aa 48 9e 3f  0a 38 23 3f da 46 6e 5e  |..f..H.?.8#?.Fn^|</p>
+<p>00000030  84 e8 3f b9 16 23 90 bb  6c de a6 83 35 fc b8 ba  |..?..#..l...5...|</p>
+<p>00000040  1b 10 98 b3 97 03 d4 38  d6 8c 55 ce 35 7f 58 5b  |.......8..U.5.X[|</p>
+<p>00000050  57 5e c5 39 95 43 2b 26  c3 c0 58 93 01 b5 c7 ef  |W^.9.C+&..X.....|</p>
+<p>00000060  c6 7f 9e bc fb 35 b7 41  96 aa 75 24 78 7e 0a 65  |.....5.A..u$x~.e|</p>
+<p>00000070  03 de 8e ad af 7e bc 61  ce 5c f5 6b 45 ef 7c 72  |.....~.a.\.kE.|r|</p>
+</code></pre>
+                </div>
+
+<p>Some form of header is clear at 0x00 – 0x1f</p>
+
+<p>Followed by presumably encrypted data as I don’t recognise any magic bytes signifying compression. </p>
+
+<p>We could disassemble the dumped bootloaders on the assumption one has relevant decryption code used during firmware update/recovery, but instead I’ll just have a look at the dumped filesystem and look for scripts or programs that perform it.</p>
+                <div class="code-block">
+                    <pre><code class="language-bash">
+<p>work@un64u:/i/tapo/C210v2/mtd/rootfs$ grep -l -r -i firmware</p>
+<p>bin/cloud-iot</p>
+<p>bin/tp_manage</p>
+<p>bin/busybox</p>
+<p>bin/uc_convert</p>
+<p>etc/dsd_convert.json</p>
+<p>etc/hotplug2-common.rules</p>
+<p>etc/init.d/check_upgrade</p>
+<p>etc/init.d/check_dup_list_from_update</p>
+<p>etc/init.d/cloud_iot</p>
+<p>qemu-arm-static</p>
+<p>lib/preinit/99_10_read_uc_data</p>
+<p>lib/modules/4.9.84/ssw101b_wifi_usb.ko</p>
+<p>lib/modules/4.9.84/atbm603x_wifi_usb.ko</p>
+<p>lib/firstboot/10_determine_parts</p>
+<p>usr/bin/recover-manager</p>
+<p>usr/bin/dsd</p>
+<p>usr/bin/cloud_upgrade</p>
+<p>usr/lib/libuc_convert.so</p>
+<p>usr/lib/opkg/info/firmware_upgrade.control</p>
+<p>usr/lib/opkg/info/mtd.control</p>
+<p>usr/lib/opkg/status</p>
+<p>sbin/slpupgrade</p>
+<p>sbin/sysupgrade</p>
+</code></pre></div>
+
+
+<p>/etc/init.d/check_upgrade seems the obvious to check and that executes /sbin/slpupgrade</p>
+
+                <div class="code-block">
+                    <pre><code class="language-bash"><p>work@un64u:/i/tapo/C210v2/mtd/rootfs$ file ./sbin/slpupgrade</p>
+<p>./sbin/slpupgrade: ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), dynamically linked, 
+interpreter /lib/ld-uClibc.so.0, stripped</p></code></pre></div>
+
+<p>This program is super simple – basically:</p>
+<li>	Parse arguments</li>
+<li>	mmap() firmware file for direct access</li>
+<li>	do some compatibility checks to make sure correct firmware for device</li>
+<li>	move 0x100 sized signature at 0x20 to a variable</li>
+<li>	call external library function rsaVerifyPSSSignByBase64EncodePublicKeyBlob() from /lib/libsecurity.so with a hardcoded RSA key and the signature</li>
+<li>	Write data using device /dev/slp_flash_chrdev  (including bootloader if needed)</li>
+<li>Reboot (unless do not reboot argument was used)</li>
+
+<p> </p>
+
+<p>rsaVerifyPSSSignByBase64EncodePublicKeyBlob() from /lib/libsecurity.so does the actual verification and decryption, but in short:</p>
+
+<li>	Base64 decode the RSA data</li>
+<li>	Check it has “RSA1” in decoded data</li>
+<li>	Verify signature from firmware file</li>
+<li>	Generate AES-128-CBC key and iv</li>
+<li>	Decrypt data</li>
+<p> </p>
+
+<p>We could just use something like gdb on the device to write out the decrypted data during slpupgrade execution (without updating the flash) - we also have a number of options if we want to do our own decryption off the device:</p>
+
+<li>	Write our own full implementation of the above</li>
+<li>	Use qemu to emulate slpupgrade/libsecurity</li>
+<li>	Write our own version of slpupgrade without the checks and IoT hardware dependencies, cross compile and link to already compiled ARM libsecurity.so</li>
+<p> </p>
+<p>Or, you know, just download the library source code I found on TP-Link’s website and compile our own version.  Yeah let’s do that.</p>
+
+<p><a href="https://static.tp-link.com/upload/gpl-code/2022/202211/20221130/c310v2_GPL.tar.bz2">https://static.tp-link.com/upload/gpl-code/2022/202211/20221130/c310v2_GPL.tar.bz2</a></p>
+
+
+<p> </p>
+<p>Added KEY and iv print out and some other debug to rsa2_pss_sha256_verifysig() in /camera_slp/torchlight/tp_package/lib/libsecurity/src/rsaVerify.c</p>
+<p><i>update: the 2 different encrypted formats differ in that the data decryption function starts at different ciphertext offsets so I now pass an extra argument to specify it.  Or just use #extern</i></p>
+
+<pre><code class="language-c">			printf("key/iv:\nKEY=");
+			for(i = 0; i <16; i++)
+			{
+				printf("%02x",salt[i]);  //first 0x10 is key
+			}
+			printf("\n");			
+			
+			printf("IV=");
+			for(i = 16; i <32; i++)
+			{
+				printf("%02x",salt[i]);
+			}
+			printf("\n");		</code></pre>
+
+<p>Compiled libsecurity.</p>
+<p>Wrote a simple program to replicate the parts of slpupgrade we care about and link to our own libsecurity.so</p>
+<p><i>I have redacted parts of it as the vendor may consider the public RSA key proprietary</i></p>
+
+<pre   data-src="decrypt_fw_redacted.c"></pre>
+
+<p>Now we have a (alpha version) offline decryptor.  Let’s see if it works (it's noisy right now as debug output is enabled)</p>
+
+                <div class="code-block">
+                    <pre><code class="language-bash">work@un64u:/play/tapo$ ./decrypt_fw Tapo_C210v2_en_1.3.7_Build_231020_Rel.39990n_up_boot-signed_1697781618399.bin
+TP-link firmware decrypt
+Watchful_IP 27-12-24 v0.0.2
+watchfulip.github.io
+
+fw_size is 8128512
+firmware_ver: 0
+RSA-1024
+Debug: Calling rsaVerifyPSSSignByBase64EncodePublicKeyBlob with:
+RSA_KEY: BgIAAAw < REDACTED > POz
+RSA_KEY_len: 368
+fw_buffer address: 0x7f6d5fca2010
+fw_size: 8128512
+signature address: 0x7ffd5ea3a610
+check_only: 0
+data_dec_offset: 0x00000000
+fw_buffer:
+00 00 02 00 55 aa 4c 5e 83 1f 53 4b a1 f8 f7 c9
+18 df 8f bf 7d a1 aa 55 08 00 00 00 00 00 00 17
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+< snip >
+
+Signature:
+c0 a8 66 99 aa 48 9e 3f 0a 38 23 3f da 46 6e 5e
+84 e8 3f b9 16 23 90 bb 6c de a6 83 35 fc b8 ba
+1b 10 98 b3 97 03 d4 38 d6 8c 55 ce 35 7f 58 5b
+57 5e c5 39 95 43 2b 26 c3 c0 58 93 01 b5 c7 ef
+< snip >
+
+rsaVerifyPSSSignByBase64EncodePublicKeyBlob()
+app_base64decode
+app_base64decode ret len 276
+len = 276
+rsaVerifySign()
+rsa2_newkey_ex    276    1
+0200000C2400005253 < REDACTED > 00
+RSA1
+bit_len: 2048
+rsaVerifySign(3)
+rsa2_pss_sha256_verifysig()
+H1:
+5d < REDACTED > d4
+H2:
+9b < REDACTED > 77
+key/iv:
+KEY=27 < REDACTED > d4
+IV=67 < REDACTED > b9
+rsaVerifySign(4)
+re is 0x00000001
+Debug: rsaVerifyPSSSignByBase64EncodePublicKeyBlob returned: 1
+Firmware verification successful
+Decrypted firmware written to Tapo_C210v2_en_1.3.7_Build_231020_Rel.39990n_up_boot-signed_1697781618399.bin.dec</code></pre></div>
+
+<p>Well it ostensibly worked - let's see what binwalk has to say about decrypted file just written.  </p>
+               
+ <div class="code-block"><pre><code class="language-bash">work@un64u:/play/tapo$ binwalk Tapo_C210v2_en_1.3.7_Build_231020_Rel.39990n_up_boot-signed_1697781618399.bin.dec
+
+DECIMAL       HEXADECIMAL     DESCRIPTION
+--------------------------------------------------------------------------------
+2112          0x840           xz compressed data
+133632        0x20A00         uImage header, header size: 64 bytes, header CRC: 0xF49FA693, created: 2023-10-20 03:06:27, image size: 1465936 bytes, Data Address: 0x20008000, Entry Point: 0x20008000, data CRC: 0xCB5FE299, OS: Linux, CPU: ARM, image type: OS Kernel Image, compression type: none, image name: "Linux-4.9.84"
+135896        0x212D8         device tree image (dtb)
+144332        0x233CC         device tree image (dtb)
+147628        0x240AC         device tree image (dtb)
+148579        0x24463         xz compressed data
+148913        0x245B1         xz compressed data
+1600000       0x186A00        Squashfs filesystem, little endian, version 4.0, compression:xz, size: 2375554 bytes, 675 inodes, blocksize: 131072 bytes, created: 2023-10-20 03:06:35
+4065280       0x3E0800        Squashfs filesystem, little endian, version 4.0, compression:xz, size: 3815274 bytes, 263 inodes, blocksize: 131072 bytes, created: 2023-10-20 03:06:38
+7998720       0x7A0D00        gzip compressed data, from Unix, last modified: 2023-10-20 03:06:34
+8026624       0x7A7A00        gzip compressed data, from Unix, last modified: 2023-10-20 03:06:34</code></pre></div>
+
+
+<p>Nice!  Does it work for other Tapo firmware that’s encrypted?  The firmware scheme or RSA key might not match on other platforms?<i>(turns out they won't)</i></p>
+
+<p>I tested the following and they all appeared to decrypt - though it should be said I haven't really had more than a cursory check with binwalk:</p>
+
+<li>Tapo_C225v2_en_1.0.7_Build_231022_Rel.37222n_up_boot-signed_1697944831712.bin</li>
+<li>Tapo_C425v1_en_1.2.10_Build_230817_Rel.66253n_up_boot-signed_1694757161571.bin</li>
+<li>Tapo_C520WSv1_en_1.0.11_Build_230621_Rel.72773n_up_boot-signed_1689911553894.bin</li>
+<li>Tapo_C720v1_en_1.0.15_Build_230309_Rel.45493n_up_boot-signed_1692170680796.bin</li>
+<li>Tapo_D130v1_en_1.0.16_Build_230829_Rel.56497n_up_boot-signed_1696921651739.bin</li>
+<li>Tapo_TC71v2_en_1.3.8_Build_230913_Rel.59332n_up_boot-signed_1695869613098.bin</li>
+<li>H200-up-ver1-2-23-P1\[20231012-rel49638\]-signed_1697774013433.bin</li>
+<p> </p>
+
+<p>Yes! They all decrypt fine.  The RSA key is clearly the same across them all.  H200 is a smart hub apparently so it may be this will work on other device types besides cameras.  <i>It will turn out lots of firmware will not decrypt.</i></p>
+
+<p><i>27 Dec 2024 update: now all encrypted TP-Link firmware supported as far as I can tell except Switches</i></p>
+
+<p>Although I’ve censored the public RSA keys used for decryption/verification - you can just check TP-Links own firmware.  One of them is in plaintext in /sbin/slpupgrade though so not hard to find.  The other in /usr/bin/nvrammanager for firmware that uses that instead.</p>
+
+<p>e.g.      <div class="code-block"><pre><code class="language-bash">strings ./sbin/slpupgrade | grep Bg    </code></pre></div>       (the long match not the shorter ones)</p>
+
+<p>You can search the web, or dump it from your own camera.</p>
+
+<p><i>Or</i> download what I assume is transition firmware from TP-Link, which is not encrypted but contains the RSA key I redacted in order for update of later versions which <i>are</i> encrypted.</p>
+
+                <div class="code-block">
+                    <pre><code class="language-bash">cd /tmp
+wget http://download.tplinkcloud.com/firmware/Tapo_C210v1_en_1.3.1_Build_221218_Rel.73283n_u_1679534600836.bin
+binwalk  -e Tapo_C210v1_en_1.3.1_Build_221218_Rel.73283n_u_1679534600836.bin  
+strings _Tapo_C210v1_en_1.3.1_Build_221218_Rel.73283n_u_1679534600836.bin.extracted/slpupgrade | grep Bg | tail -n 1
+BgIAAAwkA < redacted >
+</code></pre></div>
+<p>That's the key you need.  Similar for nvrammanager firmware.</p>
+<p><b>Feel free to do what you like with the code in this post as long as it is not causing harm (please consider including a link to this post). </p><p><u> Security researchers having eyes on the code helps improve cyber security of all products in general.</u></b></p>
+
+                <br><h2 class="text-3xl font-semibold text-blue-400 mt-8 mb-9 mt-9"  id="bootloaders">C210 v2 Bootloaders Vulnerabilities</h2>
+
+<p>One of the funnest things when playing with a new device to do is find a way to get a root shell.  I'm not sure if the root password is static or known for this device and I didn't check online.  I like the challenge of finding my own way in.</p>
+<p>There are vulnerabilities in each of the bootloaders (1st stage “factory_boot”, 2nd stage “boot”) that can be used.</p>
+
+<p>The second and third ones that affect the second bootloader are widely known, but as far as I know the one I came up with for the first bootloader isn't.  Though it is very specific to the version of the compiled code.</p>
+
+<p>In general simplified terms, the SoC bootrom will load and execute code from flash address 0x00 – maybe after verifying the code there is signed depending on the SoC and any efuses set (i.e secure boot).</p>
+
+<p>This will lead to executing the factory_boot bootloader which in turn will execute the boot bootloader.  That can then load and verify the kernel and boot linux.</p>
+
+<p>Encryption and verification varies depending on the device.</p>
+
+<p>In the case of the C210 V2, factory boot stage can be interrupted by typing “slp”, whereas the next stage is not interruptible except using the following exploit.</p>
+
+
+                <h3 class="text-l font-semibold text-blue-400 mt-8">Vulnerability 2 (second stage flash chip pin short)</h3>
+
+<p>Some Tapo versions permit second bootloader interrupt with "slp" but my C210 didn't - it's been patched out.  </p>
+
+
+<p>Alternatively we can short 2 of the exposed flash chip pins together at the right time (after second boot is loaded and running, but before kernel is loaded).  Known in 2020 and perhaps before.  e.g.  comment from depau  <a href="https://github.com/nervous-inhuman/tplink-tapo-c200-re/issues/1#issuecomment-735312236">https://github.com/nervous-inhuman/tplink-tapo-c200-re/issues/1</a></p>
+
+<p>In that case kernel read fails and you get a shell in second bootloader.  </p>
+
+
+                <h3 class="text-l font-semibold text-blue-400 mt-8">Vulnerability 3 (modify bootargs)</h3>
+
+
+<p>Standard attack known forever, but does require a shell in second bootloader.  </p>
+<p>Append <code class="language-bash">init=/bin/sh</code> to bootargs and run bootcmd, and you’ll get a root shell.  You can then continue start up.  E.g.:</p>
+
+ <div class="code-block"><pre><code class="language-bash">set bootargs 'console=ttyS0,115200n8r androidboot.console=ttyS0 root=/dev/mtdblock6 rootfstype=squashfs spdev=/dev/mtdblock7 noinitrd init=/bin/sh LX_MEM=0x3FE0000 mma_heap=mma_heap_name0,miu=0,sz=0x1220000 mma_memblock_remove=1'
+run bootcmd
+
+.. kernel boots …
+
+/etc/preinit
+/etc/init.d/rcS S boot</code></pre></div> 
+
+<p>I used the following to get network up and mount the sd card (which has various tools I want).</p>
+
+ <div class="code-block"><pre><code class="language-bash">vi /tmp/wpa.conf
+
+<p>ctrl_interface=/var/run/wpa_supplicant</p>
+<p>update_config=1</p>
+<p>ap_scan=1</p>
+<p>network={</p>
+<p>  ssid=[my ssid]</p>
+<p>  scan_ssid=1</p>
+<p>  psk=[my psk]</p>
+<p>  priority=5</p>
+<p>}</p>
+
+<p>mount /dev/mmcblk0p1 /tmp/sdcard/</p>
+<p>kill `pidof wpa_supplicant`</p>
+<p>/usr/sbin/wpa_supplicant -B -Dwext -iwlan0 -P/tmp/supplicant_pid -C/var/run/wpa_supplicant -bbr-wan -c/tmp/wpa.conf</p>
+
+<p>telnetd -p 4444 -l /bin/sh</code></pre></div> 
+
+<p>Assuming all went well you can <code class="language-bash">telnet tapo_ip 4444</code> for root shell</p>
+
+<p>Easy enough to use <code class="language-bash">cat /dev/mtd0 > /tmp/sdcard/mtd0</code>   etc for dumping flash partitions</p>
+
+<p>Or if you don’t want to keep swapping out SD card to read in another device, use netcat.  E.g.</p>
+
+<p>PC:</p>
+
+<code class="language-bash">nc -l <port> > mtd0</code> 
+
+<p><br>Tapo:</p>
+
+<code class="language-bash">cat /dev/mtd0 | nc &ltserverip&gt &ltport&gt </code> 
+
+
+<p><br>Other tools such as tftp may work also – particularly if you have a more fully featured busybox on the SD card you can use.</p>
+
+
+<p>This does require shorting small chip pins at the right time, and I preferred a software only solution.</p>
+
+
+                <h3 class="text-l font-semibold text-blue-400 mt-8" id="my_vuln">Vulnerability 1 (first stage arbitrary code modification via sf read and go commands)</h3>
+
+<p>Enterring “slp” into first bootloader gives a boot shell.  Commands are very limited however.</p>
+
+<p>Even the help command isn’t present, but you can just press <tab> to print them.</p>
+
+<pre><code class="language-bash">SigmaStar # help</p>
+<p>Unknown command 'help' - try 'help'</p>
+<p>SigmaStar #                         <TAB></p>
+<p>  bootp btime dbg env estart go gpio httpd initDbgLevel macaddr printenv</p>
+<p>  reset riu run setenv sf sfbin tftpboot</p>
+<p>SigmaStar #</code> </pre>
+
+
+
+
+<p>We do have the sf and go commands.  There are no memory address limitations in how we use these commands.  That makes it very flexible, but with the downside the attack will be specific to the exact version.</p>
+
+<p>Therefore we can use sf read to overwrite running bootloader code, and also use go to jump to code anywhere in memory.</p>
+
+<p>Analysis of the first bootloader shows the main_loop() function</p>
+
+<pre><code class="language-c">void __noreturn main_loop()
+{
+    int v0; // r0
+    _DWORD *s; // r5
+    int v2; // r0
+    int v3[5]; // [sp+8h] [bp-A8h] BYREF
+    int v4; // [sp+1Ch] [bp-94h]
+    _DWORD cmd_buf[36]; // [sp+20h] [bp-90h] BYREF
+
+    bootstage_mark_name(162, (int)"main_loop");
+    v0 = nullsub_18(162);
+    nullsub_23(v0);
+    bootdelay_process();
+    if ( !to_abortboot_keyed() )
+    {                                   // From GPL download:
+                                        // #ifdef CONFIG_MINIOS_BOOTARGS
+                                        //     ret = 0;
+                                        // #else
+                                        //     ret = validateLocalFirmware();
+                                        // #endif
+                                        // 
+        printf("Uip boot...\n");
+        printf("Firmware check pass!\n");// we didn't check anything
+        memset(cmd_buf, 0, 128);
+        sprintf(cmd_buf, "sf probe 0;sf read 0x21000000 0x%x 0x%x", 0x60000, 0x20000);
+        run_command_list(cmd_buf, (_BYTE *)0xFFFFFFFF, 0);
+        xz_crc32_init();
+        s = xz_dec_init(0, 0x4000u);
+        if ( !s )
+            printf("  xz_dec_init ERROR!!\n");
+
+        v4 = 0x40000;
+        v3[3] = 0x220A0000;
+        v3[2] = 0x20000;
+        v3[0] = 0x21000040;
+        v3[1] = 0;
+        v3[4] = 0;
+        printf(
+            "XZ params: in_addr 0x%x,in_size 0x%x, out_addr 0x%x, out_size 0x%x\n",
+            0x21000040,
+            0x20000,
+            0x220A0000,
+            0x40000);
+        v2 = xz_dec_run((int)s, v3);
+        printf("XZ: uncompress ret %d, size = %d\n", v2, v4);
+        xz_dec_end((int)s);
+        run_command("go 0x220A0000", 0);
+    }
+
+    cli_loop();
+}</code> </pre>
+
+
+<p>Interesting that the second stage doesn’t appear to be verified here.  There’s support for it in the GPL source, but it is not in place on this device.</p>
+
+<p>Anyway, what if we use sf read to overwrite the <code class="language-c">run_command("go 0x220A0000", 0)</code> and use go to execute main_loop() to load next stage bootloader to memory, but not jump to it yet?</p>
+
+<p>We can then use another sf read to change code in the next bootloader to avoid booting the kernel.  Then use the go command to go to the next stage and drop into a shell, and change bootargs as before for root linux shell.</p>
+
+<p>Here’s part of the main_loop() disassembly:</p>
+<pre><code class="language-armasm">
+ROM:23E01260                 BL              xz_dec_run
+ROM:23E01264                 LDR             R2, [SP,#0xB0+var_94]
+ROM:23E01268                 MOV             R1, R0
+ROM:23E0126C                 LDR             R0, =aXzUncompressRe ; "XZ: uncompress ret %d, size = %d\n"
+ROM:23E01270                 BL              printf
+ROM:23E01274                 MOV             R0, R5
+ROM:23E01278                 BL              xz_dec_end
+ROM:23E0127C                 LDR             R0, =aGo0x220a0000 ; "go 0x220A0000"
+ROM:23E01280                 MOV             R1, R4
+ROM:23E01284                 BL              run_command ; nop to exit to main shell
+ROM:23E01288
+ROM:23E01288 loc_23E01288                            ; CODE XREF: main_loop+2C↑j
+ROM:23E01288                 BL              cli_loop
+ROM:23E0128C ; ---------------------------------------------------------------------------
+ROM:23E0128C                 ADD             SP, SP, #0xA4
+ROM:23E01290                 POP             {R4,R5,PC}
+ROM:23E01290 ; End of function main_loop
+ROM:23E01290</code></pre>
+
+<p>So we have our run_command address <b>0x23E01284</b> we just need to overwrite it with 0x00000000 (NOP it)</p>
+
+<pre><code class="language-nasm">work@un64u:/play/tapo$ hhd /i/tapo/C210v2/mtd/mtd0
+00000000  02 00 00 ea 49 50 4c 5f  00 44 00 00 55 3e 47 38  |....IPL_.D..U>G8|
+00000010  08 70 9f e5 08 60 9f e5  00 60 87 e5 01 00 00 ea  |.p...`...`......|
+00000020  00 08 20 1f 01 a0 00 00  30 0f 11 ee 40 00 80 e3  |.. .....0...@...|
+00000030  30 0f 01 ee 51 0f 11 ee  03 0b 80 e3 51 0f 01 ee  |0...Q.......Q...|
+00000040  0f 06 a0 e3 50 0f 01 ee  01 01 a0 e3 10 0a e8 ee  |....P...........|
+00000050  08 70 9f e5 08 60 9f e5  00 60 87 e5 01 00 00 ea  |.p...`...`......|
+00000060  00 08 20 1f 02 a0 00 00  63 04 00 fa 08 70 9f e5  |.. .....c....p..|
+00000070  08 60 9f e5 00 60 87 e5  01 00 00 ea 00 08 20 1f  |.`...`........ .|</code></pre>
+
+<p>There is 0x00 0x00 at flash address 0x01 – so we can just load that twice to overwrite with 0x00000000</p>
+
+<pre><code class="language-bash">sf read 0x23E01284 0x01 2
+sf read 0x23E01286 0x01 2
+go 0x23E0118C             #(main_loop function address)
+
+(device just boots normally into linux)</code></pre>
+
+<p>Hmm, didn’t work.  Code in bootloaders often relocates in memory when running.  Let’s see if we can get more information.</p>
+
+<p>Let’s deliberately crash the bootloader (theoretically this could brick the device if it lands in a flash erase or write function etc -  the chances are tiny but not zero).</p>
+
+<pre><code class="language-nasm">SigmaStar # go ffffffff
+## Starting application at 0xFFFFFFFF ...
+undefined instruction
+pc : [<00000004>]          lr : [<23f81c24>]
+sp : 23b3f910  ip : 0000000c     fp : 23e00020
+r10: 00000000  r9 : 23b3fef8     r8 : 00000002
+r7 : 23b3f948  r6 : 00000001     r5 : fa000075  r4 : 23b3f950
+r3 : ffffffff  r2 : 0000001d     r1 : 23b3f950  r0 : 00000001
+Flags: nzCv  IRQs off  FIQs off  Mode SVC_32
+Resetting CPU ...</code></pre>
+
+<p>So the link register shows we are expected to come back to <b>0x23f81c24</b></p>
+
+<p>But disassembly of the uboot calling function "go" indicates a return to <b>0x23E01C24</b></p>
+<pre><code class="language-armasm">ROM:23E01C1C                 MOV             R0, R6
+ROM:23E01C20                 BL              do_go
+ROM:23E01C24                 MOVS            R4, R0  ; We should ret to here
+ROM:23E01C28                 MOV             R1, R0
+ROM:23E01C2C                 LDR             R0, =aApplicationTer ; char *
+ROM:23E01C30                 MOVNE           R4, #1
+ROM:23E01C34                 BL              printf
+ROM:23E01C38
+ROM:23E01C38 loc_23E01C38                            ; CODE XREF: go+C↑j
+ROM:23E01C38                 MOV             R0, R4
+ROM:23E01C3C                 POP             {R4-R6,PC}
+ROM:23E01C3C ; End of function go</code></pre>
+<p> </p>
+
+<p>In other words, the running code is at a 0x23f81c24 - 0x23E01C24 =  <b>+0x180000</b> offset.</p>
+
+<p>Adjust our commands as needed.</p>
+
+<pre><code class="language-nasm">sf read 0x23F81284 0x01 2
+sf read 0x23F81286 0x01 2
+go 0x23F8118C</code></pre>
+
+
+<pre><code class="language-nasm">Autobooting in 1 seconds
+SigmaStar # sf read 0x23F81284 0x01 2
+SF: 2 bytes @ 0x1 Read: OK
+SigmaStar # sf read 0x23F81286 0x01 2
+SF: 2 bytes @ 0x1 Read: OK
+SigmaStar # go 0x23F8118C
+## Starting application at 0x23F8118C ...
+Autobooting in 1 seconds
+Uip boot...
+Firmware check pass!
+Flash is detected (0x0C0A, 0x20, 0x40, 0x17)
+SF: Detected nor0 with total size 8 MiB
+SF: 131072 bytes @ 0x60000 Read: OK
+[XZ] !!!reserved 0x21000000 length=0x 1000000 for xz!!
+XZ params: in_addr 0x21000040,in_size 0x20000, out_addr 0x220a0000, out_size 0x40000
+XZ: uncompress ret 7, size = 262144
+SigmaStar #</code></pre>
+
+<p>Great!  Next stage loaded and decompressed but we didn’t automatically jump to it yet.  We are still in first bootloader.</p>
+
+<p>So let’s change next stage code before we execute it to give us a shell.</p>
+
+<p>There are numerous ways to do this of course, but I went for changing bootcmd.</p>
+<p>Second stage bootloader function to return bootcmd:</p>
+<pre><code class="language-c">int get_bootcmd()
+{
+    int v0; // r0
+    volatile int bootdelay; // r4
+    int bootcmd; // r0
+
+    v0 = getenv("bootdelay");
+    bootdelay = v0;
+    if ( v0 )
+        bootdelay = simple_strtol(v0, 0, 10);
+
+    bootcmd = getenv("bootcmd");
+    ::bootdelay = bootdelay;
+    return bootcmd;
+}</code></pre>
+
+
+<pre><code class="language-armasm">ROM:220BF6C2 ; _DWORD aBootcmd
+ROM:220BF6C2 aBootcmd        DCB "bootcmd",0         ; DATA XREF: ROM:off_220A16C8↑o
+ROM:220BF6CA aSlp            DCB "slp",0
+ROM:220BF6CE ; _DWORD aBootdelaykey
+ROM:220BF6CE aBootdelaykey   DCB "bootdelaykey",0
+ROM:220BF6DB ; _DWORD aDram</code></pre>
+<p> </p>
+
+
+<p> </p>
+<p>“bootcmd” string literal is at <b>0x220BF6C2</b>   </p>
+
+<p>Write a 0x00 at <b>0x220BF6C2</b> and string will become “bo” – which of course is not an environment variable so won’t be loaded and executed.  No offset is required for second bootloader .text .data etc</p>
+
+<p>Then jump to second stage bootloader.</p>
+
+
+<pre><code class="language-nasm">SigmaStar # sf read 0x220BF6C4   0x1 1
+SF: 1 bytes @ 0x1 Read: OK
+SigmaStar # go 0x220A0000
+## Starting application at 0x220A0000 ...
+
+
+U-Boot 2015.01 (Apr 27 2024 - 16:51:33), Build: jenkins-tapo_c210v2_sw101b_develop-22
+
+Version: I6g09280b5
+DRAM:
+
+< snip >
+
+Flash is detected (0x0C0A, 0x20, 0x40, 0x17)
+SF: Detected nor0 with total size 8 MiB
+SF: 8388608 bytes @ 0x0 Read: OK
+SigmaStar #</code></pre>
+
+<p>Yay – second stage bootloader shell.  No timed shorting of pins needed.</p>
+
+<p>This does have the downside of needing the correct flash reads to the correct addresses – which may be different for different bootloader releases.</p>
+
+<p>But for my device – the following does what I need.</p>
+
+<pre><code class="language-nasm">sf read 0x23F81284 0x00003f34 4
+go 0x23F8118C
+sf read 0x220BF6C4 0x1 1
+go 0x220A0000</code></pre>
+
+                <br><h2 class="text-3xl font-semibold text-blue-400 mt-8 mb-9 mt-9"  id="mistake">Fixing a mistake the easy (ok, hard) way</h2>
+
+<p>Rather than entering bootloader commands every time, if you are doing security research you are going to be booting the device lots, so I wanted my own root filesystem on the device.</p>
+
+<p>Depends on the device and type of testing, but typically I like to:</p>
+
+<li>	Drop in to root shell on boot</li>
+<li>	Configure network – run telnetd or dropbear</li>
+<li>	Mount usb/sd and run my own script stored on it during phases on boot as needed</li>
+<li>	Mount my pentest server NFS share and run optional boot script (if supported)</li>
+<li>	etc</li>
+<p></p>
+<p>Easy enough to make a new rootfs partition file which I won’t cover here. It isn’t encrypted or signed.</p>
+
+<p>However, I can’t write it to flash from bootloader as this device only has wireless or SD card – which are not accessible within the bootloader.</p>
+
+<p>There is no serial data transfer command.</p>
+
+<p>There is tftp to load file from remote server to memory, before writing it to flash, but the device has no (populated) ethernet port.</p>
+
+<p>I could make my own firmware, disable signing checks in /sbin/slpupgrade to update, but I didn’t want to make a firmware builder.  Wouldn’t take long, but I'm playing a bit fast and loose with a disposable device for a change - and I’d rather go the direct route.</p>
+
+<p>Writing to /dev/mtd6 (rootfs) partition from within linux is not recommended while it’s mounted during already booted linux, but I did it anyway.  Sometimes that works and sometimes not - depends on what's running, memory, and a number of other things.  Much more likely to be fine if you do this before all the services come up (e.g. init=/bin/sh) but I knew it might go wrong and it did.</p>
+
+<p> I assumed if things went wrong I could use sf commands in bootloader to read from the right offset in "firmware" and overwrite "rootfs" to restore it.  Upon reflection I should have paid more attention to the MTD layout as reported in the kernel. </p>
+
+<pre><code class="language-bash">/ # cat /proc/mtd
+dev:    size   erasesize  name
+mtd0: 0002d800 00010000 "factory_boot"
+mtd1: 00002800 00010000 "factory_info"
+mtd2: 00010000 00010000 "art"
+mtd3: 00020000 00010000 "config"
+mtd4: 00020000 00010000 "normal_boot"
+mtd5: 00166200 00010000 "kernel"
+mtd6: 00259e00 00010000 "rootfs"
+mtd7: 003bfe00 00010000 "rootfs_data"
+mtd8: 00000200 00010000 "verify"
+mtd9: 00780000 00010000 "firmware"</code></pre>
+
+<p>The firmware partition is too big to fit on the flash chip with the other partitions.</p>
+
+<p>dmesg indicates:</p>
+
+<pre><code class="language-bash">10 RedBoot partitions found on MTD device NOR_FLASH
+partitions[0] = {.name = factory_boot, .offset = 0x00000000, .size = 0x0002d800 (182KiB) }
+partitions[1] = {.name = factory_info, .offset = 0x0002d800, .size = 0x00002800 (10KiB) }
+partitions[2] = {.name = art, .offset = 0x00030000, .size = 0x00010000 (64KiB) }
+partitions[3] = {.name = config, .offset = 0x00040000, .size = 0x00020000 (128KiB) }
+partitions[4] = {.name = normal_boot, .offset = 0x00060000, .size = 0x00020000 (128KiB) }
+partitions[5] = {.name = kernel, .offset = 0x00080000, .size = 0x00166200 (1432KiB) }
+partitions[6] = {.name = rootfs, .offset = 0x001e6200, .size = 0x00259e00 (2407KiB) }
+partitions[7] = {.name = rootfs_data, .offset = 0x00440000, .size = 0x003bfe00 (3839KiB) }
+partitions[8] = {.name = verify, .offset = 0x007ffe00, .size = 0x00000200 (0KiB) }
+partitions[9] = {.name = firmware, .offset = 0x00080000, .size = 0x00780000 (7680KiB) </code></pre>
+
+<p>I didn’t spot at the time the firmware partition is mapped such that it contains the rootfs partition I wanted to write - so I don't have good rootfs data on flash to recover from.  whoops.</p>
+
+<p>I haven’t tested this, but I suspect a better approach would have been to overwrite that (/dev/mtd9) and not rootfs (/dev/mtd6) as the latter has erase boundary issues due to the mapping. </p>
+
+<p>But now I have a device that will start the kernel, but fail to mount rootfs as it did not write correctly.  Ah well, this isn't a serious security pentest contract so no real harm done.  I can strip the components off the pcb and use it as a novelty drinks coaster for all it matters.</p>
+
+<p>Given the limited options in the bootloaders to provide good rootfs data for writing to flash (no network, no sdcard, no serial transfer) – what are the options for recovery here?</p>
+
+<li>	Program the flash chip directly off the board or in circuit</li>
+<li>	Make up a cable for ethernet (this board apparently has pins for this) and use tftp or the inbuilt recovery web server</li>
+<li>	Use a SigmaStar factory recovery tool</li>
+<p></p>
+<p>Hmm.  Well those options sound like a <i>hassle</i>.  I could do one of those, but it would involve getting out of my comfy chair, getting bits and bobs like cables, multimeter, logic analyzer and soldering iron etc.  There has to be a way without taking a hardware approach right?</p>
+
+<p>Thinking about it, we still have bootloader access which provides a shell we can run flash read/writes and the go command.</p>
+
+<p>I can’t just upload my own program and jump to it without network or serial data transfer, but I have a flash dump, and I can perform as many flash reads as I like to populate memory as I choose.</p>
+
+<p>So, I can write and compile my own baremetal program, then programatically find the needed flash reads to reproduce the code in memory.</p>
+
+<p>Then send those commands to the bootloader over UART, and execute my program.  Something to read hex ascii from UART to memory.  Then drop back to shell so I can use the sf erase and sf write commands to write my custom rootfs.  Much easier than making a cable/programming flash chip!!  (it isn't)</p>
+
+                <h3 class="text-l font-semibold text-blue-400 mt-8">Step 1 – read from UART input to memory</h3>
+<p> </p>
+
+
+<p>Hack together quick baremetal program in ASM#:</p>
+
+
+<pre   data-src="read_keys_to_mem.S" class="language-nasm"></pre>
+
+<p>If you are familiar with ASM, you may notice there is no .data section – the strings are just appended to the end of the code.  This is so the raw binary is as small as possible as we are using individual flash reads to reproduce it on the device.</p>
+
+<p>I compiled it as below but any ARM 32 bit cross compile toolchain will do:</p>
+
+<img src="Clipboard_12-26-2024_04.jpg">
+
+                <h3 class="text-l font-semibold text-blue-400 mt-8">Step 2 – Convert baremetal binary into flash reads</h3>
+<p> </p>
+<p>A simple python program will suffice here – just find the baremetal program bytes in our flash dump and produce corresponding sf read commands.</p>
+<pre  data-src="gen_sfreads.py" ></pre>
+
+
+
+
+<p>Example output:</p>
+<pre><code class="language-bash">work@un64u:/play/tapo/as$ python gen_sfreads.py read_keys_to_mem.S.bin flashdump.bin 0x21000800
+sf read 0x21000800 0x115 0x1
+sf read 0x21000801 0x1e9 0x1
+sf read 0x21000802 0x1e6 0x1
+sf read 0x21000803 0x1d6 0x1
+sf read 0x21000804 0x15ac 0x1
+< snip ></code></pre>
+
+<p>So we have a list of commands that will reproduce write our program in memory.</p>
+
+<p>Now we need to send them (I am not copying and pasting them one by one in putty that sounds like work)</p>
+
+                <h3 class="text-l font-semibold text-blue-400 mt-8">Step 3 – Send flash read commands to device</h3>
+<p> </p>
+<p>Python again, running on a spare rpi which is connected via UART to device.</p>
+
+<p>It will handle the device starting, waiting for prompt and reading from supplied flash commands in a text file we generated in previous step.</p>
+
+<p>Then execute our program with go command and exit.</p>
+
+<pre  data-src="uart_flash_commands.py" ></pre>
+
+                <h3 class="text-l font-semibold text-blue-400 mt-8">Step 4 – Send rootfs data via UART encoded as ascii hex</h3>
+<p> </p>
+
+<p>Use hexdump to produce hex ascii without spaces and in upper case of our desired partition data to a text file.</p>
+
+<p><code class="language-bash">cat /i/tapo/C210v2/mtd/mtd6.rootfs.patched.mtd | hexdump -v -e '1/1 "%02x"' |  tr '[:lower:]' '[:upper:]' > /i/mtd6.txt</code></p>
+
+<p>If all went well the Tapo should be waiting for our input of ascii hex bytes - so cat the rootfs data to UART:</p>
+
+<p><code class="language-bash">cat /i/mtd6.txt > /dev/ttyAMA0</code></p>
+
+<p>Our program running in the bootloader should have read it all, and written it to memory in binary (as opposed to ascii hex bytes).</p>
+
+
+                <h3 class="text-l font-semibold text-blue-400 mt-8">Step 5 – Erase, write and reboot</h3>
+<p> </p>
+
+<p>No need to show this here, but I actually had another program loaded at 0x21000000 to memdump loaded data for verification – neither bootloader has md (memdump) command.</p>
+
+<p>That’s why for reading hex ascii writing to memory I placed in at 0x21000800 not 0x800 earlier.</p>
+
+<p>Anyway, I checked the contents and all looks good and we have overcome the challenge of populating memory with new rootfs partition data using a very limited bootloader and UART only.</p>
+
+<pre><code class="language-bash">sf erase 0x001e6200 0x00259e00 
+sf write 0x21010000 0x001e6200 0x00259e00
+reset
+
+< snip >
+##  Booting kernel from Legacy Image at 20008200 ...
+   Image Name:   Linux-4.9.84
+   Image Type:   ARM Linux Kernel Image (uncompressed)
+   Data Size:    1465632 Bytes = 1.4 MiB
+   Load Address: 20008000
+   Entry Point:  20008000
+   Verifying Checksum ... OK
+   Loading Kernel Image ... OK
+atags:0x20000000
+
+Starting kernel ...
+
+[    0.000000] Booting Linux on physical CPU 0x0
+[    0.000000] Linux version 4.9.84 (root@smartlifeci1) (gcc version 4.9.4 (Buildroot 2017.08-gc7bbae9-dirty) ) #2 PREEMPT Sat Apr 27 17:03:23 CST 2024
+< snip >
+[    1.386953] VFS: Mounted root (squashfs filesystem) readonly on device 31:6.
+< snip >
+
+/ # id
+uid=0(root) gid=0(root)</code></pre>
+
+<p>Our rooted rootfs was written successfully!!</p>
+
+<p>And I didn’t have to fetch hardware modification tools! Sure, that might have been easier but I enjoyed overcoming the challenge I set myself. </p>
+<p>OK, back to proper security research work I won't be contractually allowed to talk about.</p>
+
+               <br> <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">TP-Link C210 V2 Notes</h2>
+
+<h3 class="text-l font-semibold text-blue-400 mt-8 mb-4">UART</h3>
+
+<p>PCB on the device under test has a populated 4 pin header providing UART access under the SD card cover.</p>
+
+<img src="Clipboard_12-26-2024_05.jpg">
+
+<p>Connecting to these SoC TX/RX pins permits access to UART.   GND not shown.</p>
+<p>Likely these pins come out to somewhere on the PCB but I didn’t check.</p>
+
+
+                <br><h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Acknowledgements</h2>
+<p>	</p>
+<p>Watchful IP would like to thank TP-Link for providing GPL code for this and related products online.</p>
+
+<p>Some vendors only pay lip service to GPL, and only publish the stock source instead of the version with the modifications they have made despite being obligated under license to do so.</p>
+
+<p>Sadly some vendors ignore it entirely.  So well done to TP-Link for doing it properly. </p>
+
+
+                <br><h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9"  id="disclaimer">GENERAL DISCLAIMER</h2>
+
+<i><p>Watchful IP conducted time limited general security testing on stated product.  This did not include any online services testing, which, under UK Law, would require explicit consent from vendor. <b>This report is not authorized by the vendor.</b></p>
+
+<p><u>Great care was taken to avoid infringing the rights of TP-Link.  No closed source is shown, no website content or logos included and decryption keys redacted.  Only GPL code hosted by TP-Link is briefly shown.</u></p>
+
+<p>Watchful IP accepts no liability for any damage to equipment or service provision undertaken or caused by third parties.</p>
+
+<p>Security threats are continually changing, with new vulnerabilities discovered on a daily basis, and
+no product, system or application can ever be 100% secure no matter how much security testing is
+conducted.  All submitted reports are intended only to provide information to the vendor, or in this case, the general security researcher community relating to security vulnerabilities discovered in the course of this, or previous, projects.</p>
+
+<p>These reports cannot and do not protect against personal or business loss as the result of use of
+the applications or systems described. Watchful IP offers no warranties, representations or legal
+certifications concerning the applications or systems tested without prior written agreement.</p>
+
+<p>All software includes defects: nothing in any submitted report or any other communication is
+intended to represent or warrant that security testing was complete and without error, nor do any
+such work or communications represent or warrant that the application tested is suitable for task,
+free of other defects than reported, fully compliant with any industry standards, or fully
+compatible with any operating system, hardware, or other application.</p>
+
+<p>All work carried out was done on a best effort basis with the aim of improving the security of vendor products and services, and the security posture of vendor in general.</p></i>
+
+<p>Watchful IP</p>
+
+<p>December 2024</p>
+<br>
+            </section>
+
+        </main>
+        
+        
+        <footer class="py-0 bg-gray-800">
+  <div class="container mx-0 px-0">
+    <table class=" table-auto w-full border-t border-gray-300 ">
+      <thead >
+        <tr> 
+          <th class="w-1/3 border-r border-gray-300 text-red-700">Watchful IP</th>
+          <th class=" py-2 text-red-700">About Watchful IP</th>
+        </tr>
+      </thead>
+      <tbody class="text-slate-100 text-sm" >
+        <tr>
+          <td class="align-top p-4 border-r border-gray-300 ">
+            <p>United Kingdom based Security Researcher</p>
+            <a href="mailto:watchfulip@protonmail.com" class="text-red-600 hover:underline">watchfulip@protonmail.com</a>
+            <p class="mt-4">&copy; 2024 Watchful IP. All rights reserved.</p>
+            <p>This is a <s>confidential</s> report for public release.</p>
+          </td>
+       <td class="align-top w-3/5 p-4 relative">
+  <p class=" text-sm">Watchful IP is a UK security researcher specializing in ARM embedded IoT device security.<br><br>25+ years experience with all aspects of corporate systems administration.<br><br>10 years experience of Penetration testing, reverse engineering and cyber vulnerability research.</p>
+  <a href="https://watchfulip.github.io" class="text-sm text-red-600 hover:underline">https://watchfulip.github.io</a>
+  <img src="logo.jpg" alt="Watchful IP Logo" class="absolute bottom-0 right-0 max-w-[200px] h-auto">
+</td>
+
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</footer>
+
+
+
+    </div>
+</body>
+</html>

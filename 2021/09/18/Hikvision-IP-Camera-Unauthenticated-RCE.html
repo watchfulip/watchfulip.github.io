@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.2">
+    <title>Unauthenticated Remote Code Execution (RCE) vulnerability in Hikvision IP camera/NVR firmware (CVE-2021-36260)</title>
+    <link href="output.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/command-line/prism-command-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-armasm.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-asm.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-nasm.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins//file-highlight//prism-l/file-highlight/.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <script  src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins//file-highlight//prism-file-highlight.min.js"></script>
+
+</head>
+
+<body class="bg-slate-700  min-h-screen mb-4 text-gray-300 leading-relaxed">
+    <div class="bg-slate-800  container mx-auto px-4 py-8 max-w-4xl">
+    
+        <header class="mb-12">
+<div class="relative w-full h-2/4">
+  <!-- Banner image -->
+  <div 
+    class="absolute inset-0 bg-cover bg-center bg-no-repeat"
+    style="background-image: url('header.jpg');"
+  ></div>
+  
+  <!-- Fade-out effect -->
+  <div class="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-slate-700 to-transparent"></div>
+        <!-- Overlay for opacity -->
+        <div class="absolute inset-0 bg-black opacity-50"></div>  
+  <!-- Header text -->
+  <div class="relative z-10 flex flex-col items-center justify-center h-full">
+  <h1 class="text-4xl font-bold text-pink-500  text-center mb-4  mt-8 text-outline animate-tracking-in-expand">Unauthenticated Remote Code Execution (RCE) vulnerability </h1>
+  <h2 class="text-3xl font-bold text-blue-400  text-center mb-9 text-outline animate-tracking-in-expand">in Hikvision IP camera/NVR firmware (CVE-2021-36260)</h2>
+</div>
+</div>
+
+        </header>
+
+        <main >
+            <section class="mb-4 text-slate-300 leading-relaxed">
+
+
+    <nav>
+        <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Table of Contents:</h2>
+        <ul>
+            <li><a href="#summary">Summary</a></li>
+            <li><a href="#risk-assessment">Risk Assessment</a></li>
+            <li><a href="#vulnerability-details">Vulnerability details</a></li>
+            <li><a href="#proof-of-concept">Proof of Concept video on a real target</a></li>
+            <li><a href="#stills">A few stills from the real attack POC video</a></li>
+            <li><a href="#recommendations">Recommendations made to Hikvision</a></li>
+            <li><a href="#remediation">Remediation</a></li>
+            <li><a href="#backdoor">Is this a Chinese Government mandated backdoor?</a></li>
+            <li><a href="#additional">Additional</a></li>
+            <li><a href="#thanks">Thanks</a></li>
+            <li><a href="#affected-firmware">Affected Firmware Types</a></li>
+            <li><a href="#affected-models">Affected Model List</a></li>
+            <li><a href="#timeline">Timeline</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="summary">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Summary</h2>
+            <p>The majority of the recent camera product ranges of Hikvision cameras are susceptible to a critical remote unauthenticated code execution vulnerability even with latest firmware (as of 21 June 2021). Some older models are affected also as far back as at least 2016. Some NVRs are also affected, though this is less widespread. This is being tracked as <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-36260">CVE-2021-36260</a></p>
+            <p>Hikvision's security advisory: <a href="https://www.hikvision.com/en/support/cybersecurity/security-advisory/security-notification-command-injection-vulnerability-in-some-hikvision-products/">security-notification-command-injection-vulnerability-in-some-hikvision-products</a></p>
+            <p>This permits an attacker to gain full control of device with an unrestricted root shell, which is far more access than even the owner of the device has as they are restricted to a limited "protected shell" (psh) which filters input to a predefined set of limited, mostly informational commands. In addition to complete compromise of the IP camera, internal networks can then be accessed and attacked.</p>
+            <p><strong>This is the highest level of critical vulnerability – a zero click unauthenticated remote code execution (RCE) vulnerability affecting a high number of Hikvision cameras. Connected internal networks at risk</strong></p>
+            <p>Given the deployment of these cameras at sensitive sites potentially even critical infrastructure is at risk. A list of affected firmware types can be found at the end of this document. Firmware from as long ago as 2016 has been tested and found to be vulnerable. Only access to the http(s) server port (typically 80/443) is needed. No username or password needed nor any actions need to be initiated by camera owner. It will not be detectable by any logging on the camera itself.</p>
+            <p>This vulnerability was reported to Hikvision the day after discovery, on 21 June 2021. I wrote a full report to them identifying the problem code, the device types affected, POC and recommendations for resolution. At the time of writing, patched firmware is partially available though inconsistently deployed across various Hikvision firmware portals.</p>
+        </section>
+
+        <section id="risk-assessment">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Risk Assessment</h2>
+            <h3 class="text-l font-semibold text-blue-400 mt-8">Impact:</h3>
+            <ul>
+                <li>Remotely Exploitable: Yes</li>
+                <li>Authentication Required: None</li>
+                <li>Zero click (no action needed from device owner): Yes</li>
+                <li>Render device inoperable: Yes</li>
+                <li>Read customer data: Yes</li>
+                <li>Change customer data: Yes</li>
+                <li>Latest firmware vulnerable: Yes (as of 21 June 2021)</li>
+                <li>Latest products vulnerable: Yes</li>
+                <li>Denial of Service vulnerability: Yes</li>
+                <li>Potentially enable physical attack on site: Yes</li>
+                <li>Attack internal network: Yes</li>
+            </ul>
+            <p><br>The is the most serious form of vulnerability for this device type.</p>
+        </section>
+
+        <section id="vulnerability-details">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Vulnerability details</h2>
+            <p>Not for public release in order to protect companies/end users.</p>
+        </section>
+
+        <section id="proof-of-concept">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Proof of Concept (POC) example</h2>
+            <p>Hikvision HSRC (Hikvision Security Response Center) requested POC of the vulnerability when I first reported it to them, and I replied with working code within 2 hours or so. As it's not responsible to disclose a POC, I instead decided to make a video showing it in action, though I have subsequently agreed with Hikvision not to release it.</p><p> Rather than just use my own equipment as a target, which could seem contrived, I enlisted the aid of a friend from the <a href="http://ipcamtalk.com">http://ipcamtalk.com</a> forum, @alistairstevenson, who kindly put up a real live camera with permission to exploit. I wasn't told the access credentials but during the attack it was clear it's running 2021 firmware and camera was manufactured January 2021. </p><p>The video showed a real world example of me attacking this target, obtaining information that should be only available to the owner, obtaining a root shell accessible via SSH (even though SSH disabled in the web interface), and ultimately bypassing the camera admin web portal authentication.</p>
+        </section>
+
+        <section id="stills">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">A few stills from the real target POC video</h2>
+            <p>I don't know the root/admin password. We get device information we shouldn't be able to get, the contents of /etc/passwd (the admin account password is always the same as the camera web portal admin password) and add our own system root account:</p>
+            <img src="add_user.jpg" alt="Get device information, /etc/passwd, add a root account and spawn dropbear (SSH server) on a port of our choice:">
+            <p>That account is using the restricted informational shell Hikvision limits the camera owner to, so we add a root account with /bin/sh shell, login via SSH:</p>
+            <img src="root_shell.jpg" alt="Bypass restricted shell for full root shell">
+            <p>Disable web authentication and login to target camera admin web pages with any password. In reality we already have a far more important root shell but I wanted to demonstrate web page login is trivial at this point:</p>
+            <img src="web_admin.jpg" alt="Web Interface authentication bypassed">
+            <p>With a root shell, a real attacker could have easily taken a large range of hostile actions at this point.</p>
+        </section>
+
+        <section id="recommendations">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Recommendations made to Hikvision</h2>
+            <p>I made a number of recommendations in my report to HSRC. I identified the flawed code that was the problem, and indicated how I thought it best to remedy it. I don't have access to their code base repositories, but rather needed to decrypt firmware, and reverse engineer code yet I still found it. Issue new firmware as soon as possible and issue a public security advisory.</p>
+        </section>
+
+        <section id="remediation">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Remediation</h2>
+            <p>Received patched IPC_G3 (V5.5.800 build 210628) and IPC H5 (V5.5.800 build 210628) firmware from HSRC for testing. Decrypted and reversed the code in addition to live testing on my own equipment and confirmed to HSRC that the patched firmware resolves the vulnerability. Was further pleased to note this problem was fixed in the way I recommended.</p>
+        </section>
+
+        <section id="backdoor">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Is this a Chinese Government mandated backdoor?</h2>
+            <p>No, definitely NOT. You wouldn't do it like this. And not all firmware types are affected.</p>
+            <p>28 September 2021 update: expanded answer provided below:</a></p>
+	  
+<p>
+<i>I received a request for comment on an upcoming media article, and though I generally prefer my report to stand on it's own, I took the view the questions raised could use clarification to what was already in my report.</p><p>
+
+Unfortunately, the request was made only 6 hours or so before publication, and as I work primarily during the night I was asleep and wasn't able to respond in time.</p><p>
+
+I present my full response below:</i></p><p>
+
+Hi there</p><p>
+
+Thank you for your request for comment.  I am happy to address your questions:</p><p>
+            <h3 class="text-l font-semibold text-blue-400 mt-8">Tell me why exactly do you feel that this is not a Government mandated backdoor and just a genuine vulnerability?</h3>
+
+I’ve worked in IT with an emphasis on security for almost 30 years.  I’ve also had extensive experience reverse engineering code deployed on embedded devices in addition to reviewing hostile malware and remote access trojans (RATs) more generally.</p><p>
+
+With such experience it becomes obvious if something is deliberately placed and obfuscated on an embedded device.  The manner in which a deliberately implanted and malicious “backdoor” would be implemented and utilized is totally different to this genuine software vulnerability.  I cannot provide specific details aside to say it was absolutely clear to me in this case this was a genuine software bug and not a deliberate backdoor.</p><p>
+
+<u>I’d like to also make it clear Hikvision in no way asked me to say this wasn’t a backdoor or influenced the wording I used in any way</u>.  If I found something I considered to be a backdoor placed by any vendor based in any country I would publicly disclose it irrespective of the vendor’s wishes.</p><p>
+
+            <h3 class="text-l font-semibold text-blue-400 mt-8">Why did it take so long to release a fix since your first disclosure to Hikvision? June 21 – Sept. 18</h3>
+
+
+There is a huge range of firmware to check, patch and test.  90 days is actually very quick given the large range of products that needed to undergo this process when it’s done thoroughly with proper testing.</p><p>
+
+It’s also the case that in order to protect customers Hikvision were pushing out fixed firmware on public firmware portals way ahead of publicly announcing this problem.  Responsible, coordinated disclosure is a complicated process that needs to be handled carefully so that you don’t expose companies/end-users to bad actors (attackers) before fixes are ready.  As soon as you announce a vulnerability publicly the bad guys (criminals) look for it to use to harm people.  </p><p>
+
+This is also why I choose to work with Hikvision privately rather than simply announce to the world I’d found this vulnerability the day I discovered it.    Protecting people is my number one priority.</p><p>
+
+            <h3 class="text-l font-semibold text-blue-400 mt-8">Apart from this is there anything else that you would like to say and convey to our readers on this topic?</h3>
+
+
+I’ve received a large number of emails, and messages from people all over the world on this topic.  Though I am not free to provide some of the technical details I’ve been asked for, I would like to thank everyone for their kind words.  </p><p>
+
+I hope that is somewhat helpful.</p><p>
+
+Kind Regards</p><p>
+
+<b>Watchful IP</b>
+	  </p>
+	  
+	  
+	  
+        </section>
+
+        <section id="additional">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Additional</h2>
+            <p>I'm a security researcher who used to look after servers, networks and 1000s of people's data in a former life, and the last few months knowing this exists on such a large scale has been worrying. Still I needed to wait 90 days after reporting before making any responsible public disclosure, whilst providing assistance to them and encouraging patched firmware to be developed, tested, published and a public security advisory issued.</p>
+            <p>I'd recommend you do not expose any IoT device to the Internet no matter who it is made by - or in which country the device is made (including USA, Europe etc). Use a VPN for access if needed. Block outbound traffic too if at all possible - I also like to give these devices the wrong gateway (router) IP.</p>
+            <p>You can find me at ipcamtalk.com, or watchfulip@protonmail.com</p>
+            <p><strong>Watchful IP</strong></p>
+        </section>
+
+        <section id="thanks">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Thanks...</h2>
+            <p>Thank you to the members of ipcamtalk.com who agreed a security research testing scope with me and provided access to some camera types I didn't own. In particular:</p>
+            <ul>
+                <li>@alistairstevenson</li>
+                <li>@iTuneDVR</li>
+                <li>@Securame</li>
+                <li>@rawinek</li>
+                <li>@cyrusbyte</li>
+            </ul>
+            <p>Thank you to Hikvision - particularly the Head of HSRC, his team and R&D for working hard to fix this quickly. I sent them lots of emails and reports which they kindly liaised with me on.</p>
+        </section>
+
+        <section id="affected-firmware">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Affected Firmware Types</h2>
+            <p>Notes: I do not have the ability to decrypt all firmware types, nor access to all versions so am unable to check all firmware. Usually firmware types use the prefix IPC (IP Camera = not PTZ) or IPD (IP Dome = PTZ camera). Date code is in the form YYMMDD. OEM firmware is not listed - there's too many to try to obtain and check. </p><p>At time of writing updated firmware seems to be properly deployed on the Hikvision China region firmware portal for Chinese region devices, but only partially on the Global site. On the European <a href="http://www.hikvisioneurope.com/portal/?dir=portal">www.hikvisioneurope.com</a> and Russian <a href="http://ftp.hikvision.ru/01.%20Firmware/">http://ftp.hikvision.ru</a> sites even much of the updated firmware from the incomplete Global site is missing. Other regional portals are also likely unreliable. Some NVRs are also affected, though they were not within the original scope of this report. Please refer to Hikvision's advisory for more information.</p>
+            <h3 class="text-l font-semibold text-blue-400 mt-8">Vulnerable IP Camera Firmware</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Most recent vulnerable Firmware Version</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>IPC_E0</td><td>IPC_E0_CN_STD_5.4.6_180112</td></tr>
+                    <tr><td>IPC_E1</td><td>unknown</td></tr>
+                    <tr><td>IPC_E2</td><td>IPC_E2_EN_STD_5.5.52_180620</td></tr>
+                    <tr><td>IPC_E4</td><td>unknown</td></tr>
+                    <tr><td>IPC_E6</td><td>IPCK_E6_EN_STD_5.5.100_200226</td></tr>
+                    <tr><td>IPC_E7</td><td>IPCK_E7_EN_STD_5.5.120_200604</td></tr>
+                    <tr><td>IPC_G3</td><td>IPC_G3_EN_STD_5.5.160_210416</td></tr>
+                    <tr><td>IPC_G5</td><td>IPC_G5_EN_STD_5.5.113_210317</td></tr>
+                    <tr><td>IPC_H1</td><td>IPC_H1_EN_STD_5.4.61_181204</td></tr>
+                    <tr><td>IPC_H5</td><td>IPCP_H5_EN_STD_5.5.85_201120</td></tr>
+                    <tr><td>IPC_H8</td><td>Factory installed firmware mid 2021</td></tr>
+                    <tr><td>IPC_R2</td><td>IPC_R2_EN_STD_V5.4.81_180203</td></tr>
+                </tbody>
+            </table>
+            <p>Some of these are from 2018, but they were the most up to date firmware available at time of report.</p>
+            <h3 class="text-l font-semibold text-blue-400 mt-8">Vulnerable PTZ Camera Firmware</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Most recent vulnerable Firmware Version</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>IPD_E7</td><td>IPDEX_E7_EN_STD_5.6.30_210526</td></tr>
+                    <tr><td>IPD_G3</td><td>IPDES_G3_EN_STD_5.5.42_210106</td></tr>
+                    <tr><td>IPD_H5</td><td>IPD_H5_EN_STD_5.5.41_200911</td></tr>
+                    <tr><td>IPD_H7</td><td>IPD_H7_EN_STD_5.5.40_200721</td></tr>
+                    <tr><td>IPD_H8</td><td>IPD_H8_EN_STD_5.7.1_210619</td></tr>
+                </tbody>
+            </table>
+            <h3 class="text-l font-semibold text-blue-400 mt-8">Vulnerable Legacy Firmware</h3>
+            <p>Proven to be vulnerable - though newer firmware has existed for some time which doesn't have the vulnerability.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Vulnerable Firmware Version</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>IPC_R7</td><td>Up to 5.4.x</td></tr>
+                    <tr><td>IPD_R7</td><td>Up to 5.4.x</td></tr>
+                    <tr><td>IPC_G0</td><td>Up to 5.4.x</td></tr>
+                    <tr><td>IPC_H3</td><td>Up to 5.4.x</td></tr>
+                    <tr><td>IPD_H3</td><td>Up to 5.4.x</td></tr>
+                </tbody>
+            </table>
+            <p>Perhaps others too - these are just ones I stumbled across and I wasn't really looking for legacy issues. There's lots of cameras with old vulnerable firmware accessible on the Internet according to shodan however.</p>
+        </section>
+
+        <section id="affected-models">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Affected Model List</h2>
+            <p>Coming up with a proper affected model list is hard:</p>
+            <ul>
+                <li>Chinese region variants have often have their own model names</li>
+                <li>Some firmware does not have public release notes that list the compatible models</li>
+                <li>There's a huge number of OEM resellers with their own model numbers</li>
+            </ul>
+            <p><br>For this reason I think it better to simply include the list Hikvision have published in their security advisory:</p>
+            <img src="models1.jpg" alt="Affected Models 1">
+            <img src="models2.jpg" alt="Affected Models 2">
+            <img src="models3.jpg" alt="Affected Models 3">
+        </section>
+
+        <section id="timeline">
+            <h2 class="text-3xl font-semibold text-blue-400 mb-9 mt-9">Timeline</h2>
+            <ul>
+                <li>Vulnerability discovered: Sunday 20 June 2021</li>
+                <li>Manufacturer notified of issue: Monday 21 June 2021 16:16 to HSRC@hikvision.com and support.uk@hikvision.com. Unfortunately HSRC didn't receive this due to it being caught by a spam filter.</li>
+                <li>Wednesday 23 June 2021 01:00 Follow up email to HSRC@hikvision.com and 400@hikvision.com, additionally sent pdf copy of email via vulnerability submission form at https://www.hikvision.com/europe/support/cybersecurity/report-an-issue/</li>
+                <li><strong>Wednesday 23 June 2021 04:27 received reply from HSRC@hikvision.com requesting report on my findings.</strong></li>
+                <li>Wednesday 23 June 2021 05:40 v1.0.0 of vulnerability details (<strong>WIP-2021-06-HIK-2</strong>) emailled to HSRC@hikvision.com</li>
+                <li><strong>Wednesday 23 June 2021 07:42 HSRC confirm they have reproduced the issue.</strong></li>
+                <li>Wednesday 07 July 2021 Request for disclosure timeline and CVE details in the next 7 days.</li>
+                <li><strong>Sunday 12 July 2021 HSRC inform me of the CVE ID they have applied for (CVE-2021-36260)</strong></li>
+                <li>Wednesday 04 August 2021 notify HSRC of my intention to make limited public disclosure 90 days after my initial report 20 September 2021. I insist companies/end-users know there is risk and they need to update devices.</li>
+                <li><strong>Tuesday 17 August 2021 HSRC send patched IPC_G3 (built 28 June 2021) and IPC_H5 (built 28 June 2021) for testing</strong></li>
+                <li>Wednesday 18 August 2021 informed HSRC testing on patched firmware complete and I urge them to release firmware as soon as possible on all firmware portals.</li>
+                <li><strong>Saturday 18 September 2021 Hikvision and I publish our respective advisory/report</strong></li>
+            </ul>
+        </section>
+    </main>
+
+    
+
+        
+        
+        <footer class="py-0 bg-gray-800">
+  <div class="container mx-0 px-0">
+    <table class=" table-auto w-full border-t border-gray-300 ">
+      <thead >
+        <tr> 
+          <th class="w-1/3 border-r border-gray-300 text-red-700">Watchful IP</th>
+          <th class=" py-2 text-red-700">About Watchful IP</th>
+        </tr>
+      </thead>
+      <tbody class="text-slate-100 text-sm" >
+        <tr>
+          <td class="align-top p-4 border-r border-gray-300 ">
+            <p>United Kingdom based Security Researcher</p>
+            <a href="mailto:watchfulip@protonmail.com" class="text-red-600 hover:underline">watchfulip@protonmail.com</a>
+            <p class="mt-4">&copy; 2024 Watchful IP. All rights reserved.</p>
+            <p>This is a <s>confidential</s> report for public release.</p>
+          </td>
+       <td class="align-top w-3/5 p-4 relative">
+  <p class=" text-sm">Watchful IP is a UK security researcher specializing in ARM embedded IoT device security.<br><br>25+ years experience with all aspects of corporate systems administration.<br><br>10 years experience of Penetration testing, reverse engineering and cyber vulnerability research.</p>
+  <a href="https://watchfulip.github.io" class="text-sm text-red-600 hover:underline">https://watchfulip.github.io</a>
+  <img src="logo.jpg" alt="Watchful IP Logo" class="absolute bottom-0 right-0 max-w-[200px] h-auto">
+</td>
+
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</footer>
+
+
+
+    </div>
+</body>
+</html>
